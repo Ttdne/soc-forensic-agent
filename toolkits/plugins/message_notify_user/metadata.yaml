@@ -1,0 +1,3 @@
+name: message_notify_user
+version: 1.0.0
+description: Plugin to send a message to user without requiring a response, used for acknowledging receipt of messages, providing progress updates, or reporting task completion

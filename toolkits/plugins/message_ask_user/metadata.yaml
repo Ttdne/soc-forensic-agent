@@ -1,0 +1,3 @@
+name: message_ask_user
+version: 1.0.0
+description: Plugin to ask user a question and wait for response, used for requesting clarification, asking for confirmation, or gathering additional information

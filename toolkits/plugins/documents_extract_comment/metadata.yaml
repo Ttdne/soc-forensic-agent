@@ -1,0 +1,3 @@
+name: documents_extract_comment
+version: 1.0.0
+description: Plugin để trích xuất bình luận trong file word, trả về danh sách placeholders và mô tả 

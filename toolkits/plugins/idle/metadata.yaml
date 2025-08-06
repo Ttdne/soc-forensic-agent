@@ -1,0 +1,3 @@
+name: idle
+version: 1.0.0
+description: A special tool to indicate the agent has completed all tasks and is about to enter idle state
