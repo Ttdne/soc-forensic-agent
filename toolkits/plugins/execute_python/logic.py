@@ -3,7 +3,7 @@ import tempfile
 import os
 import time
 
-def execute(code: str, timeout: int = 600, state_dir: str = None, **kwargs):
+def execute(code: str, timeout: int = 6000, state_dir: str = None, **kwargs):
     try:
         # Tạo thư mục gốc theo timestamp nếu state_dir không được cung cấp
         if state_dir is None:

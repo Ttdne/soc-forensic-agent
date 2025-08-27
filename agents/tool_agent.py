@@ -5,6 +5,7 @@ import json
 from dotenv import load_dotenv
 from openai import OpenAI
 from config import custom_function
+from agents.guard_agent.guard_agent import GuardAgent   
 from toolkits.loader import load_toolkit_plugins
 from toolkits.plugins.message_ask_user.schema import MessageAskUserParams
 from toolkits.plugins.message_notify_user.schema import MessageNotifyUserParams
@@ -16,12 +17,11 @@ from toolkits.plugins.file_read.schema import FileReadParams
 from toolkits.plugins.execute_python.schema import ExecutePythonParams
 from toolkits.plugins.count_file_line.schema import CountFileLineParams
 from toolkits.plugins.command_line.schema import CommandLineParams
-from toolkits.plugins.kill_malware_process.schema import KillMalwareProcessParams
 import yaml
 # Config OpenAI
 load_dotenv()
 
-PROXY = "http://192.168.5.8:3128"
+#PROXY = "http://192.168.5.8:3128"
 MODEL_NAME = os.getenv("MODEL_NAME")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PROMPT_DIR = os.path.join(os.path.dirname(__file__), '..', 'prompts', 'roles')
@@ -40,21 +40,26 @@ PLUGIN_CONFIG = {
     "file_read": FileReadParams,
     "execute_python" : ExecutePythonParams,
     "count_file_line" : CountFileLineParams,
-    "command_line" : CommandLineParams,
-    "kill_malware_process": KillMalwareProcessParams
-}
+    "command_line" : CommandLineParams
+    }
 
 class ToolAgent:
     def __init__(self ,state_dir: str = None):
         self.plugins = load_toolkit_plugins()
         self.state_dir = state_dir
+        self.plugin_metadata = {}
         role_name = "Tool_Agent"
         self.role_prompt = self.load_role_prompt(role_name)
         self.inside_tool = ["file_read"]
         self.client = OpenAI(
             api_key=OPENAI_API_KEY
         )
-
+        # Set log_path to <state_dir>/agent_log.json if state_dir is provided
+        if self.state_dir:
+            log_path = os.path.join(self.state_dir, "guard_agent.json")
+        else:
+            log_path = None
+        self.guard_agent = GuardAgent(log_path=log_path)
     def load_role_prompt(self, role_name: str) -> str:
         prompt_path = os.path.join(PROMPT_DIR, f"{role_name}.json")
         if not os.path.exists(prompt_path):
@@ -87,6 +92,13 @@ class ToolAgent:
         for tool_call in tool_calls:
             name = tool_call.function.name
             arguments = json.loads(tool_call.function.arguments)
+            
+            description = self.plugin_metadata[name]["description"]
+            guard_res = self.guard_agent.check_tool_call(name, arguments, description)
+            if guard_res["blocked"]:
+                print(f"[GUARD] Blocked tool call: {guard_res}")
+                return {"stderr": f"Blocked dangerous tool call: {guard_res['reason']}", "guard": guard_res}
+
             print(f"{name} - {arguments}")
             arguments["state_dir"] = self.state_dir
             tool = self.plugins[name]
@@ -100,13 +112,22 @@ class ToolAgent:
 
         for plugin_path, schema in PLUGIN_CONFIG.items():
             metadata_path = os.path.join("toolkits", "plugins", plugin_path, "metadata.yaml")
+            if not os.path.exists(metadata_path):
+                raise FileNotFoundError(f"Metadata file not found for plugin: {plugin_path}")
+            
             with open(metadata_path, "r", encoding="utf-8") as f:
                 metadata = yaml.safe_load(f)
+                
+            tool_name = metadata.get("name")
+            if not tool_name:
+                raise ValueError(f"Plugin {plugin_path} does not have a 'name' field in metadata.")
+            
+            self.plugin_metadata[tool_name] = metadata
             tools.append({
                 "type": "function",
                 "function": {
                     "name": metadata.get("name"),
-                    "description": metadata.get("description"),
+                    "description": metadata.get("description", "No description provided."),
                     "parameters": schema.model_json_schema()
                 }
             })
@@ -173,6 +194,11 @@ class ToolAgent:
             print(tool_call)
             name = tool_call.function.name
             arguments = json.loads(tool_call.function.arguments)
+            description = self.plugin_metadata[name]["description"]
+            guard_res = self.guard_agent.check_tool_call(name, arguments, description)
+            if guard_res["blocked"]:
+                print(f"[GUARD] Blocked tool call: {guard_res}")
+                return {"stderr": f"Blocked dangerous tool call: {guard_res['reason']}", "guard": guard_res}
             print(f"[STEP {step}] Calling tool `{name}` with arguments: {arguments}")
             arguments["state_dir"] = self.state_dir
 

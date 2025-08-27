@@ -11,14 +11,14 @@ load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 MODEL_NAME = os.getenv("MODEL_NAME")
-PROXY = "http://192.168.5.8:3128"
+#PROXY = "http://192.168.5.8:3128"
 # Create a custom httpx client with SSL verification disabled
 
-custom_transport = httpx.HTTPTransport(verify=False, proxy=PROXY)
-custom_client = httpx.Client(transport=custom_transport)
+# custom_transport = httpx.HTTPTransport(verify=False, proxy=PROXY)
+# custom_client = httpx.Client(transport=custom_transport)
 client = OpenAI(
     api_key= OPENAI_API_KEY,
-    http_client=custom_client
+    #http_client=custom_client
 )
 MaskingRule = MaskingRule()
 

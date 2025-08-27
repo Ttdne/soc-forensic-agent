@@ -1,0 +1,18 @@
+regex_block:
+  - name: drop_database
+    pattern: "(DROP\\s+DATABASE|DROP\\s+TABLE|DELETE\\s+FROM)"
+    reason: "Dangerous DB operation detected"
+  - name: rm_rf_root
+    pattern: "(rm\\s+-rf\\s+/|:>\\s*/dev/sda|format\\s+c:)"
+    reason: "System file deletion or disk format detected"
+  - name: kill_all
+    pattern: "(kill\\s+-9\\s+-1|taskkill\\s+/F\\s+/IM\\s+\\*)"
+    reason: "Kill all processes detected"
+
+# optional per-tool whitelist for safe commands (tool_name: [allowed patterns])
+whitelist:
+  command_line:
+    - "^ls\\b"
+    - "^cat\\b"
+    - "^echo\\b"
+    - "^grep\\b"
